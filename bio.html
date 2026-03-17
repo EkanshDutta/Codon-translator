@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Codon Translator — Molecular Code Decoder</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:ital,wght@0,300;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050c12;
+    --surface: #0a1520;
+    --panel: #0d1e2e;
+    --border: #1a3048;
+    --accent: #00e5ff;
+    --accent2: #39ff14;
+    --accent3: #ff6b35;
+    --accent4: #d946ef;
+    --text: #c8e6f5;
+    --muted: #4a7a99;
+    --A: #ff6b6b;
+    --U: #ffd93d;
+    --G: #6bcf63;
+    --C: #4d9fff;
+    --T: #ff6b6b;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Starfield BG */
+  .bg-canvas {
+    position: fixed; inset: 0; z-index: 0;
+    background: radial-gradient(ellipse at 20% 30%, #001a2e 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 70%, #0a001a 0%, transparent 60%),
+                var(--bg);
+  }
+
+  .bg-canvas::before {
+    content: '';
+    position: absolute; inset: 0;
+    background-image: 
+      radial-gradient(1px 1px at 10% 15%, rgba(0,229,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 25% 55%, rgba(57,255,20,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 60% 20%, rgba(0,229,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 80% 40%, rgba(217,70,239,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 45% 80%, rgba(0,229,255,0.2) 0%, transparent 100%),
+      radial-gradient(2px 2px at 90% 10%, rgba(57,255,20,0.4) 0%, transparent 100%);
+    animation: twinkle 4s ease-in-out infinite alternate;
+  }
+
+  @keyframes twinkle {
+    0% { opacity: 0.6; }
+    100% { opacity: 1; }
+  }
+
+  .wrapper {
+    position: relative; z-index: 1;
+    max-width: 1100px; margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    margin-bottom: 50px;
+    animation: fadeDown 0.8s ease both;
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-30px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .badge {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 5px 16px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    margin-bottom: 18px;
+    box-shadow: 0 0 20px rgba(0,229,255,0.15);
+  }
+
+  h1 {
+    font-family: 'Space Mono', monospace;
+    font-size: clamp(28px, 5vw, 52px);
+    font-weight: 700;
+    line-height: 1.1;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #00e5ff 0%, #39ff14 50%, #d946ef 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+    margin-bottom: 12px;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 15px;
+    font-weight: 300;
+    font-style: italic;
+    letter-spacing: 0.5px;
+  }
+
+  /* Info Bar */
+  .info-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+    margin-bottom: 40px;
+    animation: fadeUp 0.8s 0.2s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .info-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .info-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+  }
+
+  .info-card h3 {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .info-card p {
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.6;
+    font-weight: 300;
+  }
+
+  /* Main Translator */
+  .translator-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+    animation: fadeUp 0.8s 0.4s ease both;
+  }
+
+  @media (max-width: 700px) {
+    .translator-grid { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .panel-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  .panel-dot.green { background: var(--accent2); box-shadow: 0 0 8px var(--accent2); }
+  .panel-dot.orange { background: var(--accent3); box-shadow: 0 0 8px var(--accent3); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .panel-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .panel-body { padding: 20px; }
+
+  /* Mode Switcher */
+  .mode-switch {
+    display: flex;
+    gap: 0;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .mode-btn {
+    flex: 1;
+    padding: 9px 0;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .mode-btn.active {
+    background: var(--accent);
+    color: var(--bg);
+    font-weight: 700;
+  }
+
+  textarea {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 14px;
+    padding: 14px;
+    resize: vertical;
+    min-height: 100px;
+    outline: none;
+    transition: border-color 0.3s;
+    letter-spacing: 2px;
+    line-height: 1.8;
+  }
+
+  textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(0,229,255,0.1); }
+  textarea::placeholder { color: var(--muted); letter-spacing: 1px; }
+
+  .input-hint {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Space Mono', monospace;
+  }
+
+  /* Nucleotide Legend */
+  .legend {
+    display: flex;
+    gap: 14px;
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+
+  .leg-item {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 12px; font-family: 'Space Mono', monospace;
+  }
+
+  .leg-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    box-shadow: 0 0 6px currentColor;
+  }
+
+  /* Translate Button */
+  .translate-btn {
+    width: 100%;
+    margin-top: 16px;
+    padding: 14px;
+    background: linear-gradient(135deg, #00c4e6, #39ff14);
+    color: #050c12;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .translate-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(0,229,255,0.4);
+  }
+
+  .translate-btn:active { transform: translateY(0); }
+
+  .translate-btn::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .translate-btn:hover::after { opacity: 1; }
+
+  /* Output panel */
+  .output-scroll {
+    min-height: 160px;
+    max-height: 340px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  /* Codon Visualization */
+  .codon-stream {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 6px 0;
+    min-height: 60px;
+  }
+
+  .codon-unit {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 3px;
+    opacity: 0;
+    transform: translateY(16px) scale(0.85);
+    transition: opacity 0.4s, transform 0.4s;
+  }
+
+  .codon-unit.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  .codon-bases {
+    display: flex; gap: 2px;
+  }
+
+  .base {
+    width: 22px; height: 22px;
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+
+  .base.A { background: rgba(255,107,107,0.2); color: var(--A); border: 1px solid var(--A); }
+  .base.U, .base.T { background: rgba(255,217,61,0.2); color: var(--U); border: 1px solid var(--U); }
+  .base.G { background: rgba(107,207,99,0.2); color: var(--G); border: 1px solid var(--G); }
+  .base.C { background: rgba(77,159,255,0.2); color: var(--C); border: 1px solid var(--C); }
+
+  .codon-aa {
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent2);
+    text-align: center;
+    max-width: 66px;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .codon-aa.stop { color: var(--accent3); }
+  .codon-aa.start { color: var(--accent4); }
+
+  /* Protein sequence strip */
+  .protein-strip {
+    margin-top: 16px;
+    padding: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+
+  .protein-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .protein-seq {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    letter-spacing: 2px;
+    color: var(--accent2);
+    word-break: break-all;
+    line-height: 1.8;
+  }
+
+  /* Stats Row */
+  .stats-row {
+    display: flex; gap: 12px; margin-top: 14px; flex-wrap: wrap;
+  }
+
+  .stat-pill {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 14px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .stat-pill span { color: var(--accent); }
+
+  /* Animation Canvas */
+  .dna-animation {
+    margin-bottom: 32px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    animation: fadeUp 0.8s 0.6s ease both;
+  }
+
+  .dna-animation canvas {
+    display: block;
+    width: 100%;
+    height: 120px;
+  }
+
+  /* Codon Table */
+  .codon-table-section {
+    animation: fadeUp 0.8s 0.8s ease both;
+  }
+
+  .section-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .codon-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 8px;
+  }
+
+  .aa-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 12px;
+    cursor: default;
+    transition: all 0.25s;
+  }
+
+  .aa-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0,229,255,0.1);
+  }
+
+  .aa-name {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent2);
+    margin-bottom: 4px;
+  }
+
+  .aa-codons {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.6;
+    letter-spacing: 1px;
+  }
+
+  .highlight-ring {
+    animation: ringPulse 0.5s ease both;
+  }
+
+  @keyframes ringPulse {
+    0% { box-shadow: 0 0 0 0 rgba(0,229,255,0.6); }
+    100% { box-shadow: 0 0 0 8px rgba(0,229,255,0); }
+  }
+
+  /* Error */
+  .error-msg {
+    padding: 12px 16px;
+    background: rgba(255,107,107,0.1);
+    border: 1px solid rgba(255,107,107,0.3);
+    border-radius: 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: #ff6b6b;
+    margin-top: 12px;
+  }
+
+  .clear-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 5px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    float: right;
+    margin-top: -4px;
+  }
+
+  .clear-btn:hover { border-color: var(--accent3); color: var(--accent3); }
+
+  .empty-state {
+    display: flex; align-items: center; justify-content: center;
+    height: 100px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 2px;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="bg-canvas"></div>
+
+<div class="wrapper">
+
+  <!-- Header -->
+  <header>
+    <div class="badge">Molecular Biology Tool</div>
+    <h1>Codon Translator</h1>
+    <p class="subtitle">Decode the language of life — RNA codons → amino acids → proteins</p>
+  </header>
+
+  <!-- Info Cards -->
+  <div class="info-strip">
+    <div class="info-card">
+      <h3>What is a Codon?</h3>
+      <p>A codon is a triplet of nucleotide bases (e.g. AUG) in mRNA that encodes a specific amino acid. The genetic code maps all 64 codons to 20 amino acids.</p>
+    </div>
+    <div class="info-card">
+      <h3>Translation Process</h3>
+      <p>Ribosomes read mRNA codons 5'→3'. tRNA brings matching amino acids. A polypeptide chain grows until a stop codon (UAA, UAG, UGA) terminates synthesis.</p>
+    </div>
+    <div class="info-card">
+      <h3>The Genetic Code</h3>
+      <p>Near-universal across life. AUG is the start codon (Met). The code is redundant — multiple codons often encode the same amino acid (degeneracy).</p>
+    </div>
+  </div>
+
+  <!-- DNA Animation Strip -->
+  <div class="dna-animation">
+    <canvas id="dnaCanvas"></canvas>
+  </div>
+
+  <!-- Translator -->
+  <div class="translator-grid">
+    <!-- Input -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-dot"></div>
+        <span class="panel-title">Input Sequence</span>
+      </div>
+      <div class="panel-body">
+        <div class="mode-switch">
+          <button class="mode-btn active" id="modeRNA" onclick="setMode('RNA')">mRNA</button>
+          <button class="mode-btn" id="modeDNA" onclick="setMode('DNA')">DNA</button>
+        </div>
+        <textarea id="seqInput" placeholder="Enter sequence e.g. AUGGCUUAA" rows="5" oninput="liveUpdate()" onkeydown="handleKey(event)"></textarea>
+        <div class="input-hint">// Spaces ignored. Case insensitive. T→U auto-converted in DNA mode.</div>
+        <div class="legend">
+          <div class="leg-item"><div class="leg-dot" style="background:var(--A);color:var(--A)"></div>A — Adenine</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--U);color:var(--U)"></div>U — Uracil</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--G);color:var(--G)"></div>G — Guanine</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--C);color:var(--C)"></div>C — Cytosine</div>
+        </div>
+        <button class="translate-btn" onclick="translate()">▶ TRANSLATE</button>
+      </div>
+    </div>
+
+    <!-- Output -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-dot green"></div>
+        <span class="panel-title">Translation Output</span>
+        <button class="clear-btn" onclick="clearOutput()">CLEAR</button>
+      </div>
+      <div class="panel-body">
+        <div class="output-scroll">
+          <div id="codonStream" class="codon-stream">
+            <div class="empty-state" id="emptyState">// awaiting sequence...</div>
+          </div>
+        </div>
+        <div id="proteinBlock" class="protein-strip" style="display:none">
+          <div class="protein-label">Protein Sequence (1-letter code)</div>
+          <div class="protein-seq" id="proteinSeq"></div>
+        </div>
+        <div class="stats-row" id="statsRow"></div>
+        <div id="errorMsg"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Codon Table -->
+  <div class="codon-table-section">
+    <div class="section-title">// Standard Genetic Code Reference Table</div>
+    <div class="codon-grid" id="codonGrid"></div>
+  </div>
+
+</div>
+
+<script>
+// =====================
+//  CODON TABLE
+// =====================
+const CODON_TABLE = {
+  // Phe
+  UUU:'Phe', UUC:'Phe',
+  // Leu
+  UUA:'Leu', UUG:'Leu', CUU:'Leu', CUC:'Leu', CUA:'Leu', CUG:'Leu',
+  // Ile
+  AUU:'Ile', AUC:'Ile', AUA:'Ile',
+  // Met / START
+  AUG:'Met*',
+  // Val
+  GUU:'Val', GUC:'Val', GUA:'Val', GUG:'Val',
+  // Ser
+  UCU:'Ser', UCC:'Ser', UCA:'Ser', UCG:'Ser', AGU:'Ser', AGC:'Ser',
+  // Pro
+  CCU:'Pro', CCC:'Pro', CCA:'Pro', CCG:'Pro',
+  // Thr
+  ACU:'Thr', ACC:'Thr', ACA:'Thr', ACG:'Thr',
+  // Ala
+  GCU:'Ala', GCC:'Ala', GCA:'Ala', GCG:'Ala',
+  // Tyr
+  UAU:'Tyr', UAC:'Tyr',
+  // STOP
+  UAA:'STOP', UAG:'STOP', UGA:'STOP',
+  // His
+  CAU:'His', CAC:'His',
+  // Gln
+  CAA:'Gln', CAG:'Gln',
+  // Asn
+  AAU:'Asn', AAC:'Asn',
+  // Lys
+  AAA:'Lys', AAG:'Lys',
+  // Asp
+  GAU:'Asp', GAC:'Asp',
+  // Glu
+  GAA:'Glu', GAG:'Glu',
+  // Cys
+  UGU:'Cys', UGC:'Cys',
+  // Trp
+  UGG:'Trp',
+  // Arg
+  CGU:'Arg', CGC:'Arg', CGA:'Arg', CGG:'Arg', AGA:'Arg', AGG:'Arg',
+  // Gly
+  GGU:'Gly', GGC:'Gly', GGA:'Gly', GGG:'Gly',
+};
+
+const ONE_LETTER = {
+  'Phe':'F','Leu':'L','Ile':'I','Met*':'M','Val':'V',
+  'Ser':'S','Pro':'P','Thr':'T','Ala':'A','Tyr':'Y',
+  'His':'H','Gln':'Q','Asn':'N','Lys':'K',
+  'Asp':'D','Glu':'E','Cys':'C','Trp':'W',
+  'Arg':'R','Gly':'G','STOP':'*'
+};
+
+let currentMode = 'RNA';
+
+function setMode(m) {
+  currentMode = m;
+  document.getElementById('modeRNA').classList.toggle('active', m === 'RNA');
+  document.getElementById('modeDNA').classList.toggle('active', m === 'DNA');
+  const ta = document.getElementById('seqInput');
+  ta.placeholder = m === 'RNA' ? 'Enter sequence e.g. AUGGCUUAA' : 'Enter DNA e.g. ATGGCTTAA';
+  liveUpdate();
+}
+
+function normalizeSeq(raw) {
+  let s = raw.toUpperCase().replace(/\s/g, '');
+  if (currentMode === 'DNA') s = s.replace(/T/g, 'U');
+  return s;
+}
+
+function liveUpdate() {
+  const raw = document.getElementById('seqInput').value;
+  if (!raw.trim()) { clearOutput(); return; }
+  // Only auto-update if sequence has at least one codon
+  const seq = normalizeSeq(raw);
+  if (seq.length >= 3) translate(true);
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) translate();
+}
+
+function translate(silent = false) {
+  const raw = document.getElementById('seqInput').value;
+  const seq = normalizeSeq(raw);
+  const err = document.getElementById('errorMsg');
+  err.innerHTML = '';
+
+  const validBases = currentMode === 'RNA' ? /^[AUGC]*$/ : /^[AUGC]*$/;
+  if (!validBases.test(seq)) {
+    err.innerHTML = `<div class="error-msg">⚠ Invalid characters detected. Use only A, U, G, C${currentMode === 'DNA' ? ', T' : ''}.</div>`;
+    return;
+  }
+
+  if (seq.length < 3) {
+    if (!silent) err.innerHTML = `<div class="error-msg">⚠ Sequence too short — need at least 3 bases (one codon).</div>`;
+    return;
+  }
+
+  const codons = [];
+  for (let i = 0; i + 2 < seq.length; i += 3) {
+    codons.push(seq.slice(i, i + 3));
+  }
+
+  renderCodons(codons);
+}
+
+function renderCodons(codons) {
+  const stream = document.getElementById('codonStream');
+  const empty = document.getElementById('emptyState');
+  if (empty) empty.remove();
+  stream.innerHTML = '';
+
+  let proteinStr = '';
+  let stopFound = false;
+  let aaCount = 0;
+
+  codons.forEach((codon, idx) => {
+    const aa = CODON_TABLE[codon] || '???';
+    const oneL = ONE_LETTER[aa] || '?';
+    if (aa !== 'STOP') proteinStr += oneL;
+    if (aa !== 'STOP' && aa !== '???') aaCount++;
+
+    const unit = document.createElement('div');
+    unit.className = 'codon-unit';
+    unit.innerHTML = `
+      <div class="codon-bases">
+        ${[...codon].map(b => `<div class="base ${b}">${b}</div>`).join('')}
+      </div>
+      <div class="codon-aa ${aa === 'STOP' ? 'stop' : aa === 'Met*' ? 'start' : ''}">
+        ${aa === 'Met*' && idx === 0 ? 'START' : aa}
+      </div>
+    `;
+    stream.appendChild(unit);
+
+    setTimeout(() => {
+      unit.classList.add('visible');
+      if (aa === 'STOP' || aa === 'Met*') unit.classList.add('highlight-ring');
+    }, idx * 60);
+
+    if (aa === 'STOP') stopFound = true;
+  });
+
+  // Protein strip
+  const pb = document.getElementById('proteinBlock');
+  const ps = document.getElementById('proteinSeq');
+  if (proteinStr) {
+    pb.style.display = 'block';
+    ps.textContent = proteinStr;
+  } else {
+    pb.style.display = 'none';
+  }
+
+  // Stats
+  const sr = document.getElementById('statsRow');
+  sr.innerHTML = `
+    <div class="stat-pill">Codons: <span>${codons.length}</span></div>
+    <div class="stat-pill">Amino acids: <span>${aaCount}</span></div>
+    <div class="stat-pill">Bases: <span>${codons.join('').length}</span></div>
+    <div class="stat-pill">Stop: <span>${stopFound ? 'Yes' : 'No'}</span></div>
+  `;
+
+  // Highlight matched aa-cards
+  document.querySelectorAll('.aa-card').forEach(c => c.style.borderColor = '');
+  codons.forEach(codon => {
+    const aa = CODON_TABLE[codon];
+    if (aa) {
+      const card = document.querySelector(`[data-aa="${aa}"]`);
+      if (card) card.style.borderColor = 'var(--accent)';
+    }
+  });
+}
+
+function clearOutput() {
+  document.getElementById('codonStream').innerHTML = '<div class="empty-state" id="emptyState">// awaiting sequence...</div>';
+  document.getElementById('proteinBlock').style.display = 'none';
+  document.getElementById('statsRow').innerHTML = '';
+  document.getElementById('errorMsg').innerHTML = '';
+  document.getElementById('seqInput').value = '';
+  document.querySelectorAll('.aa-card').forEach(c => c.style.borderColor = '');
+}
+
+// =====================
+//  Build Codon Ref Grid
+// =====================
+function buildCodonGrid() {
+  const byAA = {};
+  for (const [codon, aa] of Object.entries(CODON_TABLE)) {
+    if (!byAA[aa]) byAA[aa] = [];
+    byAA[aa].push(codon);
+  }
+  const grid = document.getElementById('codonGrid');
+  const order = ['Met*','Phe','Leu','Ile','Val','Ser','Pro','Thr','Ala',
+    'Tyr','His','Gln','Asn','Lys','Asp','Glu','Cys','Trp','Arg','Gly','STOP'];
+  order.forEach(aa => {
+    if (!byAA[aa]) return;
+    const displayName = aa === 'Met*' ? 'Met (Start)' : aa;
+    const card = document.createElement('div');
+    card.className = 'aa-card';
+    card.setAttribute('data-aa', aa);
+    card.innerHTML = `<div class="aa-name">${displayName} (${ONE_LETTER[aa] || '?'})</div>
+      <div class="aa-codons">${byAA[aa].join(' · ')}</div>`;
+    grid.appendChild(card);
+  });
+}
+
+// =====================
+//  DNA Helix Animation
+// =====================
+function initDNA() {
+  const canvas = document.getElementById('dnaCanvas');
+  const ctx = canvas.getContext('2d');
+  let W, H, raf;
+
+  function resize() {
+    W = canvas.offsetWidth;
+    H = canvas.offsetHeight;
+    canvas.width = W;
+    canvas.height = H;
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+
+  const bases = ['A', 'U', 'G', 'C'];
+  const baseColors = { A: '#ff6b6b', U: '#ffd93d', G: '#6bcf63', C: '#4d9fff' };
+  const particles = [];
+
+  // Floating base particles
+  for (let i = 0; i < 30; i++) {
+    particles.push({
+      x: Math.random() * 1200,
+      y: Math.random() * 120,
+      base: bases[Math.floor(Math.random() * 4)],
+      size: Math.random() * 8 + 6,
+      vx: Math.random() * 0.6 + 0.2,
+      vy: (Math.random() - 0.5) * 0.3,
+      alpha: Math.random() * 0.5 + 0.2
+    });
+  }
+
+  let t = 0;
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+
+    // Dark gradient bg
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, 'rgba(5,12,18,0)');
+    grad.addColorStop(1, 'rgba(5,12,18,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Draw double helix
+    const amplitude = 28;
+    const frequency = 0.025;
+    const vertCenter = H / 2;
+
+    for (let x = 0; x < W; x += 2) {
+      const y1 = vertCenter + Math.sin(x * frequency + t) * amplitude;
+      const y2 = vertCenter + Math.sin(x * frequency + t + Math.PI) * amplitude;
+
+      const progress = (x + t * 20) % (W + 60);
+      const alpha = 0.4 + 0.3 * Math.sin(x * 0.02 + t);
+
+      // Strand 1
+      ctx.beginPath();
+      ctx.arc(x, y1, 2, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(0,229,255,${alpha})`;
+      ctx.fill();
+
+      // Strand 2
+      ctx.beginPath();
+      ctx.arc(x, y2, 2, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(57,255,20,${alpha * 0.8})`;
+      ctx.fill();
+
+      // Base pair rungs every ~40px
+      if (x % 40 < 2) {
+        const bIdx = Math.floor(x / 40) % bases.length;
+        const base = bases[(bIdx + Math.floor(t * 2)) % 4];
+        ctx.beginPath();
+        ctx.strokeStyle = `rgba(${base === 'A' ? '255,107,107' : base === 'U' ? '255,217,61' : base === 'G' ? '107,207,99' : '77,159,255'},0.35)`;
+        ctx.lineWidth = 1.5;
+        ctx.moveTo(x, y1);
+        ctx.lineTo(x, y2);
+        ctx.stroke();
+
+        // Base label
+        ctx.font = '9px Space Mono, monospace';
+        ctx.fillStyle = baseColors[base];
+        ctx.globalAlpha = 0.6;
+        ctx.fillText(base, x - 3, vertCenter + 3);
+        ctx.globalAlpha = 1;
+      }
+    }
+
+    // Floating base labels
+    particles.forEach(p => {
+      ctx.font = `${p.size}px Space Mono, monospace`;
+      ctx.fillStyle = baseColors[p.base];
+      ctx.globalAlpha = p.alpha * (0.5 + 0.5 * Math.sin(t + p.x));
+      ctx.fillText(p.base, p.x % W, p.y);
+      ctx.globalAlpha = 1;
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x > W + 20) p.x = -20;
+      if (p.y < 0 || p.y > H) p.vy *= -1;
+    });
+
+    t += 0.012;
+    raf = requestAnimationFrame(draw);
+  }
+
+  draw();
+}
+
+// =====================
+//  INIT
+// =====================
+buildCodonGrid();
+initDNA();
+
+// Load example on start
+setTimeout(() => {
+  document.getElementById('seqInput').value = 'AUG GCU UAC GAA UGA';
+  translate();
+}, 600);
+</script>
+</body>
+</html>
